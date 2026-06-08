@@ -111,8 +111,10 @@ def recognize(out_file, most_common, coord_imgs, imgs_with_staff, imgs_spacing, 
         res = []
         prev = ''
         time_name = ''
+        print(f"Pentagrama {i}: procesando...")
         primitives, prim_with_staff, boundary = get_connected_components(
             img, imgs_with_staff[i])
+        print(f"Componentes encontrados: {len(primitives)}")
         for j, prim in enumerate(primitives):
             prim = binary_opening(prim, square(
                 np.abs(most_common-imgs_spacing[i])))
@@ -120,13 +122,16 @@ def recognize(out_file, most_common, coord_imgs, imgs_with_staff, imgs_spacing, 
             labels = predict(saved_img)
             octave = None
             label = labels[0]
+            print(f"  Componente {j}: label={label}")
             if label in black_names:
                 test_img = np.copy(prim_with_staff[j])
                 test_img = binary_dilation(test_img, disk(disk_size))
                 comps, comp_w_staff, bounds = get_connected_components(
                     test_img, prim_with_staff[j])
+                print(f"    bounds antes de filter: {len(bounds)}")
                 comps, comp_w_staff, bounds = filter_beams(
                     comps, comp_w_staff, bounds)
+                print(f"    bounds despues de filter: {len(bounds)}")
                 bounds = [np.array(bound)+disk_size-2 for bound in bounds]
 
                 if len(bounds) > 1 and label not in ['8_b_n', '8_b_r', '16_b_n', '16_b_r', '32_b_n', '32_b_r']:
@@ -204,52 +209,52 @@ def recognize(out_file, most_common, coord_imgs, imgs_with_staff, imgs_spacing, 
 
 def main(input_path, output_path):
     imgs_path = sorted(glob(f'{input_path}/*'))
-    print(f"Imágenes encontradas: {imgs_path}")
+    print(f"Imagenes encontradas: {imgs_path}")
     for img_path in imgs_path:
         try:
-            img_name = img_path.split('/')[-1].split('.')[0]
+            import os
+            img_name = os.path.splitext(os.path.basename(img_path))[0]
             out_file = open(f'{output_path}/{img_name}.txt', "w")
             print(f"Processing new image {img_name}...")
-        img = io.imread(img_path)
-        img = gray_img(img)
-        horizontal = IsHorizontal(img)
-        if horizontal == False:
-            theta = deskew(img)
-            img = rotation(img, theta)
-            img = get_gray(img)
-            img = get_thresholded(img, threshold_otsu(img))
-            img = get_closer(img)
+            img = io.imread(img_path)
+            img = gray_img(img)
             horizontal = IsHorizontal(img)
+            if horizontal == False:
+                theta = deskew(img)
+                img = rotation(img, theta)
+                img = get_gray(img)
+                img = get_thresholded(img, threshold_otsu(img))
+                img = get_closer(img)
+                horizontal = IsHorizontal(img)
 
-        original = img.copy()
-        gray = get_gray(img)
-        bin_img = get_thresholded(gray, threshold_otsu(gray))
+            original = img.copy()
+            gray = get_gray(img)
+            bin_img = get_thresholded(gray, threshold_otsu(gray))
 
-        segmenter = Segmenter(bin_img)
-        imgs_with_staff = segmenter.regions_with_staff
-        most_common = segmenter.most_common
+            segmenter = Segmenter(bin_img)
+            imgs_with_staff = segmenter.regions_with_staff
+            most_common = segmenter.most_common
 
-        # imgs_without_staff = segmenter.regions_without_staff
+            imgs_spacing = []
+            imgs_rows = []
+            coord_imgs = []
+            for i, img in enumerate(imgs_with_staff):
+                spacing, rows, no_staff_img = coordinator(img, horizontal)
+                imgs_rows.append(rows)
+                imgs_spacing.append(spacing)
+                coord_imgs.append(no_staff_img)
 
-        imgs_spacing = []
-        imgs_rows = []
-        coord_imgs = []
-        for i, img in enumerate(imgs_with_staff):
-            spacing, rows, no_staff_img = coordinator(img, horizontal)
-            imgs_rows.append(rows)
-            imgs_spacing.append(spacing)
-            coord_imgs.append(no_staff_img)
-
-        print("Recognize...")
-        recognize(out_file, most_common, coord_imgs,
-                  imgs_with_staff, imgs_spacing, imgs_rows)
-        out_file.flush()
+            print("Recognize...")
+            recognize(out_file, most_common, coord_imgs,
+                      imgs_with_staff, imgs_spacing, imgs_rows)
+            out_file.flush()
             out_file.close()
             print("Done...")
         except Exception as e:
             import traceback
             traceback.print_exc()
             print(f"ERROR: {e}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
