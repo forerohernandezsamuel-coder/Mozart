@@ -204,10 +204,12 @@ def recognize(out_file, most_common, coord_imgs, imgs_with_staff, imgs_spacing, 
 
 def main(input_path, output_path):
     imgs_path = sorted(glob(f'{input_path}/*'))
+    print(f"Imágenes encontradas: {imgs_path}")
     for img_path in imgs_path:
-        img_name = img_path.split('/')[-1].split('.')[0]
-        out_file = open(f'{output_path}/{img_name}.txt', "w")
-        print(f"Processing new image {img_name}...")
+        try:
+            img_name = img_path.split('/')[-1].split('.')[0]
+            out_file = open(f'{output_path}/{img_name}.txt', "w")
+            print(f"Processing new image {img_name}...")
         img = io.imread(img_path)
         img = gray_img(img)
         horizontal = IsHorizontal(img)
@@ -242,10 +244,12 @@ def main(input_path, output_path):
         recognize(out_file, most_common, coord_imgs,
                   imgs_with_staff, imgs_spacing, imgs_rows)
         out_file.flush()
-        out_file.close()
-        print(f"Guardado en: {output_path}/{img_name}.txt")
-        print("Done...")
-
+            out_file.close()
+            print("Done...")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"ERROR: {e}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
