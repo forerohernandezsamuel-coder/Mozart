@@ -241,7 +241,9 @@ def main(input_path, output_path):
         print("Recognize...")
         recognize(out_file, most_common, coord_imgs,
                   imgs_with_staff, imgs_spacing, imgs_rows)
+        out_file.flush()
         out_file.close()
+        print(f"Guardado en: {output_path}/{img_name}.txt")
         print("Done...")
 
 
